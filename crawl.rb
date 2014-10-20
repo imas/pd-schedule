@@ -33,17 +33,23 @@ def get_datetime(year, month, day, text)
   time
 end
 
-year = 2014
-month = 8
-day = 1
+specify_ym = '201407'
+page_uri = 'http://idolmaster.jp/schedule/index.php'
+
+specify_datetime = Date.strptime(specify_ym, '%Y%m') unless specify_ym.nil?
+page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php"
 
 agent = Mechanize.new
-agent.get("http://idolmaster.jp/schedule/#{year}#{Date.new(year, month).strftime('%B').downcase}.php")
+agent.get(page_uri)
 raw_page = agent.page
+
+year = raw_page.search('#wrapperschedule .inner').first.attributes['id'].value.match(/(\d+)/)[1].to_i
+month = raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
 raw_page.save(File.expand_path('html/%04d%02d.html'%[year, month], File.dirname(__FILE__)))
 
 cal = Icalendar::Calendar.new
 cal.timezone.tzid = "Asia/Tokyo"
+day = 1
 table = raw_page.search('table.List')
 table.search('tr').each do |row|
   last_column = row.search('td').last
