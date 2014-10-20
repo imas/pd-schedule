@@ -40,7 +40,7 @@ day = 1
 agent = Mechanize.new
 agent.get("http://idolmaster.jp/schedule/#{year}#{Date.new(year, month).strftime('%B').downcase}.php")
 raw_page = agent.page
-raw_page.save('%04d%02d.html'%[year, month])
+raw_page.save(File.expand_path('html/%04d%02d.html'%[year, month], File.dirname(__FILE__)))
 
 cal = Icalendar::Calendar.new
 cal.timezone.tzid = "Asia/Tokyo"
@@ -67,4 +67,6 @@ table.search('tr').each do |row|
   end
 end
 
-puts cal.to_ical
+open(File.expand_path('ics/%04d%02d.ics'%[year, month], File.dirname(__FILE__)), 'w') do |file|
+  file.puts cal.to_ical
+end
