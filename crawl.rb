@@ -64,12 +64,22 @@ table.search('tr').each do |row|
     dtstart = Icalendar::Values::Date.new dtstart
     dtend = Icalendar::Values::Date.new dtend
   end
-  summary = "#{last_column.children.text} (#{last_column.children.first.attributes['href']})"
+
+  genre = row.search('.genre2').text
+  categories = row.search('.performance2 img').first.attributes['alt'].value.split('、')
+  category_text = ''
+  categories.each do |cat|
+    category_text += "【#{cat}】"
+  end
+
+  summary = "#{category_text}#{last_column.children.text}(#{genre})"
+  description = "#{last_column.children.first.attributes['href']}"
 
   cal.event do |evt|
     evt.dtstart = dtstart
     evt.dtend = dtend
     evt.summary = summary
+    evt.description = description
   end
 end
 
