@@ -33,6 +33,14 @@ def get_datetime(year, month, day, text)
   time
 end
 
+def html_path(year, month)
+  File.expand_path('html/%04d%02d.html'%[year, month], File.dirname(__FILE__))
+end
+
+def ics_path(year, month)
+  File.expand_path('ics/%04d%02d.ics'%[year, month], File.dirname(__FILE__))
+end
+
 specify_ym = '201407'
 page_uri = 'http://idolmaster.jp/schedule/index.php'
 
@@ -45,7 +53,7 @@ raw_page = agent.page
 
 year = raw_page.search('#wrapperschedule .inner').first.attributes['id'].value.match(/(\d+)/)[1].to_i
 month = raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
-raw_page.save(File.expand_path('html/%04d%02d.html'%[year, month], File.dirname(__FILE__)))
+raw_page.save(html_path(year, month))
 
 cal = Icalendar::Calendar.new
 cal.timezone.tzid = "Asia/Tokyo"
@@ -83,6 +91,6 @@ table.search('tr').each do |row|
   end
 end
 
-open(File.expand_path('ics/%04d%02d.ics'%[year, month], File.dirname(__FILE__)), 'w') do |file|
+open(ics_path(year, month), 'w') do |file|
   file.puts cal.to_ical
 end
