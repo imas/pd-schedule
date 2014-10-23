@@ -55,13 +55,19 @@ year = raw_page.search('#wrapperschedule .inner').first.attributes['id'].value.m
 month = raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
 raw_page.save(html_path(year, month))
 
-cal = Icalendar::Calendar.new
+cal_exists = nil
+open(ics_path(year, month)) do |file|
+  cal_exists = Icalendar.parse(file)
+end if File.exist? ics_path(year, month)
+
+cal = Icalendar::Calendar.new if cal.nil?
 cal.timezone.tzid = "Asia/Tokyo"
 day = 1
 table = raw_page.search('table.List')
 table.search('tr').each do |row|
   last_column = row.search('td').last
   next if last_column.children.first.name != 'a'
+
   if row.search('td').first.attributes['class'].value == 'day2'
     day = row.search('td').first.search('img').first.attributes['alt'].value.to_i
   end
@@ -74,7 +80,7 @@ table.search('tr').each do |row|
   end
 
   genre = row.search('.genre2').text
-  categories = row.search('.performance2 img').first.attributes['alt'].value.split('、')
+  categories = row.search('.performance2 img').first.attributes['alt'].value.split(/、|,/)
   category_text = ''
   categories.each do |cat|
     category_text += "【#{cat}】"
@@ -83,12 +89,22 @@ table.search('tr').each do |row|
   summary = "#{category_text}#{last_column.children.text}(#{genre})"
   description = "#{last_column.children.first.attributes['href']}"
 
-  cal.event do |evt|
-    evt.dtstart = dtstart
-    evt.dtend = dtend
-    evt.summary = summary
-    evt.description = description
-  end
+  event = Icalendar::Event.new
+  event.dtstart = dtstart
+  event.dtend = dtend
+  event.summary = summary
+  event.description = description
+
+  cal_exists.first.events.each do |evt|
+    next if evt.summary != summary
+    next if evt.dtstart != event_range.begin
+    next if evt.dtend != event_range.end
+    event.uid = evt.uid
+    event.dtstamp = evt.dtstamp
+    break
+  end unless cal_exists.nil?
+
+  cal.add_event event
 end
 
 open(ics_path(year, month), 'w') do |file|
