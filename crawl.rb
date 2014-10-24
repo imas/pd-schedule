@@ -41,11 +41,11 @@ def ics_path(year, month)
   File.expand_path('ics/%04d%02d.ics'%[year, month], File.dirname(__FILE__))
 end
 
-specify_ym = '201407'
+specify_ym = nil
 page_uri = 'http://idolmaster.jp/schedule/index.php'
 
 specify_datetime = Date.strptime(specify_ym, '%Y%m') unless specify_ym.nil?
-page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php"
+page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php" unless specify_ym.nil?
 
 agent = Mechanize.new
 agent.get(page_uri)
