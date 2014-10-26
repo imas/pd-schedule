@@ -41,19 +41,28 @@ def ics_path(year, month)
   File.expand_path('ics/%04d%02d.ics'%[year, month], File.dirname(__FILE__))
 end
 
+use_cache = false
 specify_ym = nil
-page_uri = 'http://idolmaster.jp/schedule/index.php'
-
 specify_datetime = Date.strptime(specify_ym, '%Y%m') unless specify_ym.nil?
-page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php" unless specify_ym.nil?
+raw_page = nil
 
-agent = Mechanize.new
-agent.get(page_uri)
-raw_page = agent.page
+if use_cache
+  src_path = html_path(specify_datetime.year, specify_datetime.month) unless specify_datetime.nil?
+  src_path = Dir.glob('html/[0-9]*.html').sort{|a, b| b <=> a}.first if src_path.nil?
+  open(src_path) do |f|
+    raw_page = Nokogiri.HTML(f)
+  end
+else
+  agent = Mechanize.new
+  page_uri = 'http://idolmaster.jp/schedule/index.php'
+  page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php" unless specify_ym.nil?
+  agent.get(page_uri)
+  raw_page = agent.page
+end
 
 year = raw_page.search('#wrapperschedule .inner').first.attributes['id'].value.match(/(\d+)/)[1].to_i
 month = raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
-raw_page.save(html_path(year, month))
+raw_page.save(html_path(year, month)) unless use_cache
 
 cal_exists = nil
 open(ics_path(year, month)) do |file|
