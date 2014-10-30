@@ -16,7 +16,7 @@ def parse_timetext(year, month, day, time_text)
   else
     theday = Date.new(year, month, day)
     nextday = theday + 1
-    return theday..nextday
+    theday..nextday
   end
 end
 
@@ -42,7 +42,7 @@ def ics_path(year, month)
 end
 
 use_cache = false
-specify_ym = nil
+specify_ym = nil # nil or YYYYMM
 specify_datetime = Date.strptime(specify_ym, '%Y%m') unless specify_ym.nil?
 raw_page = nil
 
