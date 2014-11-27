@@ -60,7 +60,7 @@ else
   raw_page = agent.page
 end
 
-year = raw_page.search('#wrapperschedule .inner').first.attributes['id'].value.match(/(\d+)/)[1].to_i
+year = raw_page.search('#wrapperschedule #tabs img').select{|img| img.attributes['src'].value.include? 'down'}.first.attributes['src'].value.match(/(\d+)/)[1].to_i
 month = raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
 raw_page.save(html_path(year, month)) unless use_cache
 
