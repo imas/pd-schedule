@@ -1,5 +1,6 @@
 require 'mechanize'
 require 'icalendar'
+require 'optparse'
 
 def parse_timetext(year, month, day, time_text)
   range = time_text.scan(/[0-9]+:[0-9]+/)
@@ -41,8 +42,9 @@ def ics_path(year, month)
   File.expand_path('ics/%04d%02d.ics'%[year, month], File.dirname(__FILE__))
 end
 
-use_cache = false
-specify_ym = nil # nil or YYYYMM
+params = ARGV.getopts('d:c:')
+use_cache = !params['c'].nil?
+specify_ym = params['d']
 specify_datetime = Date.strptime(specify_ym, '%Y%m') unless specify_ym.nil?
 raw_page = nil
 
