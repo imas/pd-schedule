@@ -57,7 +57,7 @@ if use_cache
 else
   agent = Mechanize.new
   page_uri = 'http://idolmaster.jp/schedule/index.php'
-  page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php" unless specify_ym.nil?
+  page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php" unless specify_datetime.nil?
   agent.get(page_uri)
   raw_page = agent.page
 end
