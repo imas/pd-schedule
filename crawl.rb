@@ -67,7 +67,7 @@ month = raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.
 raw_page.save(html_path(year, month)) unless use_cache
 
 cal_exists = nil
-open(ics_path(year, month)) do |file|
+open(ics_path(year, month), 'r:utf-8') do |file|
   cal_exists = Icalendar.parse(file)
 end if File.exist? ics_path(year, month)
 
