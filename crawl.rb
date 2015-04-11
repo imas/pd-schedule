@@ -91,7 +91,13 @@ table.search('tr').each do |row|
   end
 
   genre = row.search('.genre2').text
-  categories = row.search('.performance2 img').first.attributes['alt'].value.split(/、|,/)
+
+  categories_img = row.search('.performance2 img').first
+  if categories_img.respond_to? :attributes
+    categories = categories_img.attributes['alt'].value.split(/、|,/)
+  end
+
+  categories ||= []
   category_text = ''
   categories.each do |cat|
     category_text += "【#{cat}】"
