@@ -55,7 +55,9 @@ if use_cache
     raw_page = Nokogiri.HTML(f)
   end
 else
-  agent = Mechanize.new
+  agent = Mechanize.new do |m|
+    m.follow_meta_refresh = true
+  end
   page_uri = 'http://idolmaster.jp/schedule/index.php'
   page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php" unless specify_datetime.nil?
   agent.get(page_uri)
