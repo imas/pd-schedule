@@ -2,43 +2,57 @@ require 'mechanize'
 require 'icalendar'
 require 'optparse'
 
-class ProducerCalendarAgent
-  def exec
-    params = ARGV.getopts('d:c:')
-    use_cache = !params['c'].nil?
-    specify_ym = params['d']
-    specify_datetime = Date.strptime(specify_ym, '%Y%m') unless specify_ym.nil?
-    raw_page = nil
+def ics_path(year, month)
+  File.expand_path('ics/%04d%02d.ics'%[year, month], File.dirname(__FILE__))
+end
+def html_path(year, month)
+  File.expand_path('html/%04d%02d.html'%[year, month], File.dirname(__FILE__))
+end
 
-    if use_cache
-      src_path = html_path(specify_datetime.year, specify_datetime.month) unless specify_datetime.nil?
-      src_path = Dir.glob('html/[0-9]*.html').sort{|a, b| b <=> a}.first if src_path.nil?
-      open(src_path) do |f|
-        raw_page = Nokogiri.HTML(f)
+class ProducerCalendar
+  class << self
+    def crawl(datetime)
+      agent = Mechanize.new
+      agent.tap do |mec|
+        mec.follow_meta_refresh = true
+        page_uri = if datetime
+                     "http://idolmaster.jp/schedule/#{datetime.year}#{datetime.strftime('%B').downcase}.php"
+                   else
+                     'http://idolmaster.jp/schedule/index.php'
+                   end
+        mec.get(page_uri)
       end
-    else
-      agent = Mechanize.new do |m|
-        m.follow_meta_refresh = true
-      end
-      page_uri = 'http://idolmaster.jp/schedule/index.php'
-      page_uri = "http://idolmaster.jp/schedule/#{specify_datetime.year}#{specify_datetime.strftime('%B').downcase}.php" unless specify_datetime.nil?
-      agent.get(page_uri)
-      raw_page = agent.page
+      agent.page
     end
 
-    year = raw_page.search('#wrapperschedule #tabs img').select{|img| img.attributes['src'].value.include? 'down'}.first.attributes['src'].value.match(/(\d+)/)[1].to_i
-    month = raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
-    raw_page.save(html_path(year, month)) unless use_cache
+    def cache(datetime)
+      src_path = if datetime
+                   html_path(datetime.year, datetime.month)
+                 else
+                   Dir.glob('html/[0-9]*.html').sort{|a, b| b <=> a}.first
+                 end
+      Nokogiri.HTML(open(src_path))
+    end
+  end
+end
 
-    cal_exists = nil
-    open(ics_path(year, month), 'r:utf-8') do |file|
-      cal_exists = Icalendar.parse(file)
-    end if File.exist? ics_path(year, month)
+class ProducerCalendarParser
+  attr_accessor :existing_cal
+  attr_reader :year, :month, :calendar
 
-    cal = Icalendar::Calendar.new if cal.nil?
-    cal.timezone.tzid = "Asia/Tokyo"
+  def initialize(raw_page)
+    @raw_page = raw_page
+    @year = @raw_page.search('#wrapperschedule #tabs img').select{|img| img.attributes['src'].value.include? 'down'}.first.attributes['src'].value.match(/(\d+)/)[1].to_i
+    @month = @raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
+
+    @calendar = Icalendar::Calendar.new { |cal| cal.timezone.tzid = "Asia/Tokyo" }
+
+    yield self if block_given?
+  end
+
+  def analyze!
     day = 1
-    table = raw_page.search('table.List')
+    table = @raw_page.search('table.List')
     table.search('tr').each do |row|
       last_column = row.search('td').last
       next if last_column.children.first.name != 'a'
@@ -76,21 +90,21 @@ class ProducerCalendarAgent
       event.summary = summary
       event.description = description
 
-      cal_exists.first.events.each do |evt|
+      @existing_cal.first.events.each do |evt|
         next if evt.summary != summary
         next if evt.dtstart != event_range.begin
         next if evt.dtend != event_range.end
         event.uid = evt.uid
         event.dtstamp = evt.dtstamp
         break
-      end unless cal_exists.nil?
+      end if @existing_cal
 
-      cal.add_event event
+      @calendar.add_event event
     end
 
-    open(ics_path(year, month), 'w') do |file|
-      file.puts cal.to_ical
-    end
+    yield @calendar if block_given?
+
+    @calendar
   end
 
   def parse_timetext(year, month, day, time_text)
@@ -124,14 +138,23 @@ class ProducerCalendarAgent
     end
     time
   end
-
-  def html_path(year, month)
-    File.expand_path('html/%04d%02d.html'%[year, month], File.dirname(__FILE__))
-  end
-
-  def ics_path(year, month)
-    File.expand_path('ics/%04d%02d.ics'%[year, month], File.dirname(__FILE__))
-  end
 end
 
-ProducerCalendarAgent.new.exec
+params = ARGV.getopts('d:c')
+use_cache = params['c']
+specify_ym = params['d']
+
+specify_datetime = Date.strptime(specify_ym, '%Y%m') unless specify_ym.nil?
+ProducerCalendar.send((use_cache ? :cache : :crawl), specify_datetime).tap do |raw_page|
+  ProducerCalendarParser.new(raw_page) do |parser|
+    year, month = [parser.year, parser.month]
+    raw_page.save(html_path(year, month)) unless use_cache
+    if File.exist? ics_path(year, month)
+      parser.existing_cal = open(ics_path(year, month), 'r:utf-8') { |f| Icalendar.parse(f) }
+    end
+
+    parser.analyze! do |cal|
+      open(ics_path(year, month), 'w') { |f| f.puts cal.to_ical }
+    end
+  end
+end
