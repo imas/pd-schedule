@@ -45,7 +45,7 @@ class ProducerCalendarParser
     @year = @raw_page.search('#wrapperschedule #tabs img').select{|img| img.attributes['src'].value.include? 'down'}.first.attributes['src'].value.match(/(\d+)/)[1].to_i
     @month = @raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
 
-    @calendar = Icalendar::Calendar.new { |cal| cal.timezone.tzid = "Asia/Tokyo" }
+    @calendar = Icalendar::Calendar.new.tap { |cal| cal.timezone.tzid = "Asia/Tokyo" }
 
     yield self if block_given?
   end
