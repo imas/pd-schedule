@@ -43,7 +43,8 @@ class ProducerCalendarParser
   def initialize(raw_page)
     @raw_page = raw_page
     @year = @raw_page.search('#wrapperschedule #tabs img').select{|img| img.attributes['src'].value.include? 'down'}.first.attributes['src'].value.match(/(\d+)/)[1].to_i
-    @month = @raw_page.search('#wrapperschedule .tit img')[1].attributes['alt'].value.match(/(\d+)/)[1].to_i
+    month_word = @raw_page.search('#wrapperschedule .tit img')[1].attributes['src'].value.match(/_(\w+)\.jpg/)[1]
+    @month = Time.parse(month_word).month
 
     @calendar = Icalendar::Calendar.new.tap { |cal| cal.timezone.tzid = "Asia/Tokyo" }
 
